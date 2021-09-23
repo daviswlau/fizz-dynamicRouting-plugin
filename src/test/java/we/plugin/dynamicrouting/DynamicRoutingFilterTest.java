@@ -18,78 +18,62 @@
 package we.plugin.dynamicrouting;
 
 import java.util.Map;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.net.URISyntaxException;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertEquals;
+import we.plugin.dynamicrouting.el.TemplateContext;
+import we.plugin.dynamicrouting.el.SpelTemplateContext;
 
-import org.springframework.web.server.ServerWebExchange;
-
-import we.plugin.dynamicRouting.DynamicRoutingFilter;
-
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.http.server.reactive.ServerHttpResponse;
-import org.springframework.http.HttpHeaders;
 
 /**
+ * 动态路由单元测试
  * @author Davis Lau
  */
 @RunWith(MockitoJUnitRunner.class)
 public class DynamicRoutingFilterTest {
 
-    @Mock
-    private DynamicRoutingPluginFilter dynamicRoutingPluginFilter;
-    
-    @Mock
-    private ServerWebExchange exchange;
-
-    @Mock
-    private ServerHttpRequest request;
-
-    private Map<String, Object> config = new HashMap<String, Object>();
-
-    // @Mock
-    private String fixedConfig = "{'key1':'val1'}";
-
     @Before
     public void init() throws URISyntaxException {
-        config.put("pattern", "/test/p1");
-        config.put("condition", "#header.release == 'gray'");
-        config.put("endpoint", "http://127.0.0.1/");
-        config.put("service", "dyroute");
-        config.put("path", "/cond/v1");
 
-        // request = new ServerHttpRequest();
-
-        URI uri = new URI("http://www.baidu.com");
-        HttpHeaders heders = new HttpHeaders();
-
-        when(request.getURI()).thenReturn(uri);
-        when(request.getHeaders()).thenReturn(heders);
-
-        exchange = exchange.mutate().request(request).build();
     }
 
     @Test
     public void test_validPattern() {
+        String patternDef = "/proxy/dyroute/v1/(.*)";
+        String path = "/proxy/dyroute/v1/goto/to1";
 
-        // when(dynamicRoutingFilter.getGlobalConfig()).thenReturn(new GlobalConfig());
-        // when(dynamicRoutingFilter.getFixedConfigCache()).thenReturn(null);
-        // when(exchange.getRequest()).thenReturn(request);
+        TemplateContext tcontext = new SpelTemplateContext();
 
-        dynamicRoutingPluginFilter.filter(exchange, config).block();
-        // when(dynamicRoutingPluginFilter.filter(exchange, config)).thenReturn(Mono<Void> ).block();
+        Pattern pattern = Pattern.compile(patternDef);
+        Matcher match = pattern.matcher(path);
+        match.matches();
+        String[] groups = new String[match.groupCount()];
+        for (int idx = 0; idx < match.groupCount(); idx++) {
+            groups[idx] = match.group(idx + 1);
+        }
+        tcontext.setVariable("group", groups);
+        
+        String newPath = tcontext.getValue("/cond/v1/{#group[0]}", String.class);
 
-        // verify(exchange).getRequest().getURI();
+        assertEquals("/cond/v1/goto/to1", newPath);
 
-        // assertNotNull(Boolean.TRUE);
+    }
+
+    @Test
+    public void test_validCondition() {
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put("release", "gray");
+        TemplateContext conditionContext = new SpelTemplateContext();
+        conditionContext.setVariable("headers", headers);
+        boolean isRedirect = conditionContext.getSimpleValue("#headers['release'] == 'gray'", boolean.class);
+        assertEquals(Boolean.TRUE, isRedirect);
     }
 }

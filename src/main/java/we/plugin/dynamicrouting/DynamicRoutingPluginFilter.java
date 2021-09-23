@@ -9,12 +9,12 @@ import reactor.core.publisher.Mono;
 import we.plugin.FizzPluginFilter;
 import we.plugin.FizzPluginFilterChain;
 import we.plugin.dynamicrouting.el.TemplateContext;
+import we.plugin.dynamicrouting.el.SpelTemplateContext;
 import we.util.WebUtils;
 import we.spring.http.server.reactive.ext.FizzServerHttpRequestDecorator;
 import we.util.NettyDataBufferUtils;
 import we.proxy.Route;
 import we.plugin.auth.ApiConfig;
-import we.plugin.dynamicrouting.el.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
